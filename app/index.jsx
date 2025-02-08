@@ -1,25 +1,71 @@
 import { Text, View , TextInput , Pressable, StyleSheet, FlatList} from "react-native";
 import {data} from "@/data/todos";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useState } from "react";
+import { useState, useContext , useEffect} from "react";
 import AntDesign from '@expo/vector-icons/AntDesign';
-import {Inter_500Medium, useFonts } from "@expo-google-fonts/inter";
+import { Inter_500Medium , useFonts } from "@expo-google-fonts/inter";
+import { ThemeContext } from "@/context/ThemeContext";
+import Octicons from "@expo/vector-icons/Octicons";
+import  Animated , {LinearTransition}  from "react-native-reanimated";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { StatusBar } from "expo-status-bar";
 
 
 export default function Index() {
 //in this func we flip the data array and save it in todos array
-  const [todos,setTodos] = useState(data.sort((a,b) => b.id - a.id))
-
+  const [todos,setTodos] = useState([])
 
   //in this, we initialize useState on text to make it easier to edit
   const [text, setText] = useState('')
 
+  const {colorScheme, setColorScheme , theme} = useContext(ThemeContext)
+  
+  const [loaded,error] = useFonts({
+    Inter_500Medium,
+  })
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try{
+        const jsonValue = await AsyncStorage.getItem("TodoApp")
+        const storageTodos = jsonValue !== null ? JSON.parse(jsonValue) : null 
+        if(storageTodos && storageTodos.length){
+          setTodos(storageTodos.sort((a,b) => b.id-a.id))
+        }
+        else {
+          setTodos(data.sort((a,b) => b.id - a.id))
+        }
+      }catch(e){
+        console.error(e)
+      }
+    }
+    fetchData()
+  }, [data])
+
+  useEffect(() => {
+  const storeData = async () => {
+    try {
+        const jsonValue = JSON.stringify(todos)
+        await AsyncStorage.setItem("TodoApp", jsonValue)
+    }catch(e){
+      console.error(e)
+    }
+  }    
+  storeData()
+  }, [todos])
+
+
+  if(!loaded && !error){
+    return null
+  }
+  const styles = createStyles(theme,colorScheme)
   const addTodo = () =>{
     if(text.trim()){
       const newId = todos.length > 0 ? todos[0].id + 1 : 1;
       setTodos([{ id: newId, title: text , completed : false}, ... todos])
       setText('')
-    }
+
+   }
   }
 
   const toggelTodo = (id) => {
@@ -55,25 +101,35 @@ export default function Index() {
         <Pressable onPress={addTodo} style = {styles.addButton}>
           <Text style={styles.addButtonText}>Add</Text>  
         </Pressable>       
+        <Pressable
+        onPress={() => setColorScheme(colorScheme === 'light' ? "dark" : 'light')} style={{marginLeft: 10,}}
+        >
+          {colorScheme === 'dark' 
+          ? <Octicons name ="moon" size={36} color = {theme.text} selectable={undefined}/> 
+          : <Octicons name ="sun" size={36} color = {theme.text} selectable={undefined}/>
+          }
+        </Pressable>
       </View>
-      <FlatList 
+      <Animated.FlatList 
       data={todos}
       renderItem={renderItem}
       keyExtractor={todo => todo.id}
       contentContainerStyle = {{flexGrow:1}}
+      itemLayoutAnimation={LinearTransition}
+      keyboardDismissMode="on-drag"
       />
-
-
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'}/>
     </SafeAreaView>
 
   )
 }
 
 
-const styles = StyleSheet.create({
+function createStyles(theme,colorScheme)
+ { return StyleSheet.create({
   container:{
     flex :1,
-    backgroundColor : 'black',
+    backgroundColor: theme.background ,
   },
   inputContainer:{
     flexDirection:'row',
@@ -95,16 +151,16 @@ const styles = StyleSheet.create({
     fontSize : 18,
     fontFamily: 'Inter_500Medium',
     minWidth : 0,
-    color: 'white',
+    color: theme.text ,
   },
   addButton: {
-    backgroundColor: 'white',
+    backgroundColor: theme.button ,
     padding :10,
     borderRadius: 5,
   },
   addButtonText: {
     fontSize : 18,
-    color : 'black',
+    color : colorScheme ==='dark'?'dark':'light',
   },
   todoItem : {
     flexDirection: 'row',
@@ -123,7 +179,7 @@ const styles = StyleSheet.create({
     flex:1,
     fontSize:18,
     fontFamily: 'Inter_500Medium',
-    color: 'white',
+    color: theme.text,
   },
   completedText:{
     textDecorationLine: 'line-through',
@@ -132,3 +188,4 @@ const styles = StyleSheet.create({
 
 })
 
+}
