@@ -9,6 +9,7 @@ import Octicons from "@expo/vector-icons/Octicons";
 import  Animated , {LinearTransition}  from "react-native-reanimated";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StatusBar } from "expo-status-bar";
+import { useRouter } from "expo-router";
 
 
 export default function Index() {
@@ -20,6 +21,8 @@ export default function Index() {
 
   const {colorScheme, setColorScheme , theme} = useContext(ThemeContext)
   
+  const router = useRouter()
+
   const [loaded,error] = useFonts({
     Inter_500Medium,
   })
@@ -76,12 +79,20 @@ export default function Index() {
     setTodos(todos.filter(todo => todo.id !== id))
   }
 
+  const handelPress = (id) => {
+    router.push(`/todos/${id}`)
+  }
+
   const renderItem = ({item}) => (
     <View style = {styles.todoItem}>
+      <Pressable 
+        onPress={() => handelPress(item.id) }
+        onLongPress={() => toggelTodo(item.id)}
+      >
         <Text 
         style = {[styles.todoText , item.completed && styles.completedText]}
-        onPress={() => toggelTodo(item.id)}
         >{item.title}</Text>
+        </Pressable>
         <Pressable onPress={() => removeTodo(item.id)}>
         <AntDesign name="delete" size={36} color="red" selectable = {undefined} />
         </Pressable>
@@ -94,6 +105,7 @@ export default function Index() {
         <TextInput 
           style = {styles.input}
           placeholder="Add a new Todo Task"
+          maxLength={30}   
           placeholderTextColor="gray"
           value = {text}
           onChangeText={setText} 
